@@ -116,10 +116,8 @@ def tokenize_and_align(sent_words, sent_tags, tokenizer) -> Dict:
 
         padded_batch_encoding["labels"].append(
             TAG2IDX[sent_tags[word_ids[i]]]
-            if word_ids[i] is not None  # skip special tokens
-            and word_ids[i] != word_ids[i - 1]  # only first tokens get a tag
-            and i < len(sent_tags)  # prevent overflows
-            else -100  # the special ignore token of `CrossEntropyLoss` in pytorch
+            if word_ids[i] is not None and word_ids[i] != word_ids[i - 1]
+            else -100
         )
 
     return padded_batch_encoding
@@ -145,60 +143,6 @@ class POSDataset(Dataset):
 
     def __getitem__(self, idx):  # type: ignore (the LSP complains)
         return self.tds[idx]
-
-
-def test_parse():
-    dataset = parse_dataset("train")
-    token_counter = count_tokens(dataset)
-    print(dataset[:5])
-    print(token_counter)
-    print(len(token_counter))
-    print("---")
-    print(token_counter.keys())
-
-
-def tokenize_and_align_labels(examples, tokenizer):
-    tokenized_inputs = tokenizer(
-        examples["tokens"], truncation=True, is_split_into_words=True
-    )
-
-    labels = []
-    for i, label in enumerate(examples["ner_tags"]):
-        word_ids = tokenized_inputs.word_ids(
-            batch_index=i
-        )  # Map tokens to their respective word.
-        previous_word_idx = None
-        label_ids = []
-        for word_idx in word_ids:  # Set the special tokens to -100.
-            if word_idx is None:
-                label_ids.append(-100)
-            elif (
-                word_idx != previous_word_idx
-            ):  # Only label the first token of a given word.
-                label_ids.append(label[word_idx])
-            else:
-                label_ids.append(-100)
-            previous_word_idx = word_idx
-        labels.append(label_ids)
-
-    tokenized_inputs["labels"] = labels
-    return tokenized_inputs
-
-
-def run_tokenizer():
-    words = [
-        "книгата",
-        "книга",
-        "бяга",
-        "пред",
-        "софтуерно",
-        "дезоксирибонуклеинова",
-    ]
-    tokenizer = BertTokenizer.from_pretrained("bert-base-multilingual-cased")
-    tokenizer = cast(BertTokenizer, tokenizer)
-    # for w in words:
-    #     print(tokenizer.tokenize(w))
-    return tokenizer(words, is_split_into_words=True)
 
 
 def test_tokenizer():
@@ -228,14 +172,18 @@ def compute_metrics(eval_prediction):
     (predictions, label_ids) = eval_prediction
     predictions = np.argmax(predictions, axis=2)
 
-    compare_tuples = [t for t in zip(predictions, label_ids) if t[0] != -100]
-    total = len(compare_tuples)
-    correct = sum(1 for t in compare_tuples if t[0] == t[1])
+    total = 0
+    correct = 0
+
+    for i in range(len(predictions)):
+        compare_tuples = [t for t in zip(predictions[i], label_ids[i]) if t[1] != -100]
+        total = total + len(compare_tuples)
+        correct = correct + sum(1 for t in compare_tuples if t[0] == t[1])
 
     return {"accuracy": correct / total}
 
 
-def create_trainer(model, train_dataset, test_dataset, tokenzier):
+def create_trainer(model, train_dataset, test_dataset, tokenizer):
     # https://huggingface.co/docs/transformers/main_classes/trainer#transformers.TrainingArguments
     training_args = TrainingArguments(
         num_train_epochs=5,
