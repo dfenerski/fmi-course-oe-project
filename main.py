@@ -186,7 +186,7 @@ def compute_metrics(eval_prediction):
 def create_trainer(model, train_dataset, test_dataset, tokenizer):
     # https://huggingface.co/docs/transformers/main_classes/trainer#transformers.TrainingArguments
     training_args = TrainingArguments(
-        num_train_epochs=5,
+        num_train_epochs=3,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=32,
         learning_rate=2e-5,
