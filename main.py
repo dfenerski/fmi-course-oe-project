@@ -88,7 +88,7 @@ def count_tokens(dataset: PrimitiveDataset) -> Counter:
     return Counter(tokens)
 
 
-def tokenize_and_align(sent_words, sent_tags, tokenizer) -> Dict:
+def tokenize_and_assign_pos_tag(sent_words, sent_tags, tokenizer) -> Dict:
     T = tokenizer(
         sent_words,
         is_split_into_words=True,
@@ -129,7 +129,7 @@ class POSDataset(Dataset):
         self.pds = pds
         self.tds = []
         for sent_words, sent_tokens in self.pds:
-            pbe = tokenize_and_align(sent_words, sent_tokens, self.tokenizer)
+            pbe = tokenize_and_assign_pos_tag(sent_words, sent_tokens, self.tokenizer)
             self.tds.append(
                 {
                     "input_ids": torch.tensor(pbe["input_ids"]),
@@ -155,7 +155,7 @@ def test_tokenizer():
 
     r1_sents = dataset[0][0]
     r1_tags = dataset[0][1]
-    r1 = tokenize_and_align(r1_sents, r1_tags, tokenizer)
+    r1 = tokenize_and_assign_pos_tag(r1_sents, r1_tags, tokenizer)
     r1_words = tokenizer.convert_ids_to_tokens(r1["input_ids"])
 
     print(r1_sents)
